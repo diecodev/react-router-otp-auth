@@ -23,7 +23,13 @@ totpAuthenticator.use(
     },
     async (data) => {
       const { event, request } = data;
+      // this part is a example, dev can use a cookie to store the code and email to validate user magic link
+      // or store in a database to validate user magic link.
+      // there is 2 events, send-email and verify-code.
+      // send-email is used to send the email to the user with the code and magic link.
+      // verify-code is used to verify the code and email with the logic you prefer.
       if (event === "send-email") {
+         // send-email event
         const { email, code } = data;
         console.log(`\x1b[35m[DEV ONLY]:\x1b[0m \x1b[42m${code}\x1b[0m`);
 
@@ -46,11 +52,11 @@ totpAuthenticator.use(
         });
       }
 
+      // verify-code event
       return {
         id: "1",
         email: "",
       };
-      // TODO: validate data
     },
   ),
   "totp",
