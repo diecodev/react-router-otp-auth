@@ -1,48 +1,58 @@
-# Remix Auth - Strategy Template
+### EXAMPLE OF USAGE
+```ts
+import { redirect } from "react-router";
+import { TOTPStrategy } from "react-router-otp-auth";
+import { Authenticator } from "remix-auth";
+import { env } from "~/general/utils/env";
+import { sendAuthEmail } from "../utils/email.server";
+import { authSessionStorage } from "../utils/session.server";
 
-> A template for creating a new Remix Auth strategy.
+type User = {
+  id: string;
+  email: string;
+};
 
-If you want to create a new strategy for Remix Auth, you could use this as a template for your repository.
+export const totpAuthenticator = new Authenticator<User>();
 
-The repo installs the latest version of Remix Auth and do the setup for you to have tests, linting and typechecking.
+totpAuthenticator.use(
+  new TOTPStrategy<User>(
+    {
+      secret: env.TOTP_SECRET,
+      codeFieldKey: "code",
+      emailFieldKey: "email",
+    },
+    async (data) => {
+      const { event, request } = data;
+      if (event === "send-email") {
+        const { email, code } = data;
+        console.log(`\x1b[35m[DEV ONLY]:\x1b[0m \x1b[42m${code}\x1b[0m`);
 
-## How to use it
+        const session = await authSessionStorage.getSession(
+          request.headers.get("cookie"),
+        );
+        session.set("code", code);
+        session.set("email", email);
 
-1. In the `package.json` change `name` to your strategy name, also add a description and ideally an author, repository and homepage keys.
-2. In `src/index.ts` change the `MyStrategy` for the strategy name you want to use.
-3. Implement the strategy flow inside the `authenticate` method. Use `this.success` and `this.failure` to correctly send finish the flow.
-4. In `tests/index.test.ts` change the tests to use your strategy and test it. Inside the tests you have access to `jest-fetch-mock` to mock any fetch you may need to do.
-5. Once you are ready, set the secrets on Github
-   - `NPM_TOKEN`: The token for the npm registry
-   - `GIT_USER_NAME`: The git username you want the bump workflow to use in the commit.
-   - `GIT_USER_EMAIL`: The email you want the bump workflow to use in the commit.
+        await sendAuthEmail({
+          code,
+          email,
+          magicLink: `${env.ORIGIN}/api/totp/verify?email=${email}&code=${code}`,
+        });
 
-## Scripts
+        throw redirect("/login", {
+          headers: {
+            "Set-Cookie": await authSessionStorage.commitSession(session),
+          },
+        });
+      }
 
-- `build`: Build the project for production using the TypeScript compiler (strips the types).
-- `typecheck`: Check the project for type errors, this also happens in build but it's useful to do in development.
-- `lint`: Runs ESLint against the source codebase to ensure it pass the linting rules.
-- `test`: Runs all the test using Jest.
-
-## Documentations
-
-To facilitate creating a documentation for your strategy, you can use the following Markdown
-
-```markdown
-# Strategy Name
-
-<!-- Description -->
-
-## Supported runtimes
-
-| Runtime    | Has Support |
-| ---------- | ----------- |
-| Node.js    | ✅          |
-| Cloudflare | ✅          |
-
-<!-- If it doesn't support one runtime, explain here why -->
-
-## How to use
-
-<!-- Explain how to use the strategy, here you should tell what options it expects from the developer when instantiating the strategy -->
+      return {
+        id: "1",
+        email: "",
+      };
+      // TODO: validate data
+    },
+  ),
+  "totp",
+);
 ```
