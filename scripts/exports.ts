@@ -9,6 +9,7 @@ async function main() {
 		"--pack",
 	]);
 
+	
 	let text = await new Response(proc.stdout).text();
 
 	let entrypointLines = text
